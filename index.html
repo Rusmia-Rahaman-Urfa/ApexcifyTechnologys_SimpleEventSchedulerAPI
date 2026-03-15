@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Scheduler</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -12,7 +13,7 @@
         <div class="space-y-4 mb-10">
             <input id="title" type="text" placeholder="Event Title" class="w-full p-2 border rounded">
             <input id="date" type="date" class="w-full p-2 border rounded">
-            <textarea id="desc" placeholder="Description" class="w-full p-2 border rounded"></textarea>
+            <textarea id="description" placeholder="Description" class="w-full p-2 border rounded"></textarea>
             <button onclick="addEvent()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Event</button>
         </div>
 
@@ -22,43 +23,83 @@
     </div>
 
     <script>
+        // Use localhost for now. When you deploy to Render, you will change this URL.
         const API_URL = "http://localhost:5000/events";
 
-        // Load Events
+        // 1. Load Events from the Database
         async function fetchEvents() {
-            const res = await fetch(API_URL);
-            const data = await res.json();
-            const list = document.getElementById('eventList');
-            list.innerHTML = '';
-            data.forEach(ev => {
-                list.innerHTML += `
-                    <div class="p-4 border-l-4 border-blue-500 bg-gray-50">
-                        <p class="font-bold">${ev.title} <span class="text-sm font-normal text-gray-500">(${ev.date})</span></p>
-                        <p class="text-gray-600 text-sm">${ev.description}</p>
-                    </div>`;
-            });
-        }
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                const list = document.getElementById('eventList');
+                list.innerHTML = '';
+                
+                if (data.length === 0) {
+                    list.innerHTML = '<p class="text-gray-400 italic">No events scheduled yet.</p>';
+                    return;
+                }
 
-        // Add Event
-        async function addEvent() {
-            const title = document.getElementById('title').value;
-            const date = document.getElementById('date').value;
-            const description = document.getElementById('desc').value;
-
-            const res = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title, date, description })
-            });
-
-            const result = await res.json();
-            if (res.status === 400) alert(result.message);
-            else {
-                alert(result.message);
-                fetchEvents(); // Refresh list
+                data.forEach(ev => {
+                    list.innerHTML += `
+                        <div class="p-4 border-l-4 border-blue-500 bg-gray-50 rounded shadow-sm">
+                            <p class="font-bold text-gray-800">${ev.title} 
+                                <span class="text-sm font-normal text-gray-500 ml-2">(${ev.date})</span>
+                            </p>
+                            <p class="text-gray-600 text-sm mt-1">${ev.description || 'No description'}</p>
+                        </div>`;
+                });
+            } catch (error) {
+                console.error("Error fetching events:", error);
             }
         }
 
+        // 2. Add Event to the Database
+        async function addEvent() {
+            const titleInput = document.getElementById('title');
+            const dateInput = document.getElementById('date');
+            const descriptionInput = document.getElementById('description');
+
+            const title = titleInput.value;
+            const date = dateInput.value;
+            const description = descriptionInput.value;
+
+            // Basic frontend check
+            if (!title || !date) {
+                alert("Please enter both a title and a date!");
+                return;
+            }
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title, date, description })
+                });
+
+                const result = await res.json();
+
+                if (res.ok) {
+                    // This fixes the "undefined" issue by using result.message
+                    alert(result.message || "Event added successfully!");
+                    
+                    // Clear the inputs
+                    titleInput.value = '';
+                    dateInput.value = '';
+                    descriptionInput.value = '';
+
+                    // Refresh the list immediately
+                    fetchEvents(); 
+                } else {
+                    // Shows server-side errors (like "Date cannot be in the past")
+                    alert("Error: " + (result.message || "Failed to add event"));
+                }
+            } catch (error) {
+                console.error("Connection error:", error);
+                alert("Could not connect to the server. Is your backend running?");
+            }
+        }
+
+        // Initial load when page opens
         fetchEvents();
     </script>
 </body>
