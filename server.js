@@ -47,7 +47,6 @@ app.post('/events', async (req, res) => {
     } catch (err) { res.status(500).send(err); }
 });
 
-// Use dynamic Port for Deployment
 // Render provides a port automatically; otherwise, it uses 5000 locally.
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
